@@ -92,7 +92,7 @@ namespace EZActions
             //string title = "EZActionsCommand";
             try
             {
-                EZActionsController ez = new EZActionsController(ServiceProvider);
+                EZActionsController ez = new EZActionsController(ServiceProvider, package);
                 ez.Generate();
             }
             catch { }

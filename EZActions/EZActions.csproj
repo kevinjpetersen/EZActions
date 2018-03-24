@@ -54,9 +54,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="EZActionsBuilder.cs" />
     <Compile Include="EZActionsCommand.cs" />
     <Compile Include="EZActionsCommandPackage.cs" />
     <Compile Include="EZActionsController.cs" />
+    <Compile Include="EZActionsMessages.cs" />
+    <Compile Include="EZActionsUtilities.cs" />
+    <Compile Include="EZToolsOptionsPackage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -74,6 +78,7 @@
     <Content Include="index.html" />
     <Content Include="Resources\EZActionsCommand.png" />
     <Content Include="Resources\EZActionsCommandPackage.ico" />
+    <Content Include="Resources\EZToolsOptionsPackage.ico" />
     <Content Include="stylesheet.css" />
   </ItemGroup>
   <ItemGroup>

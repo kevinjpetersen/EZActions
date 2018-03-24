@@ -17,102 +17,83 @@ namespace EZActions
     public class EZActionsController
     {
         private IServiceProvider provider;
+        private Package package;
 
-        public EZActionsController(IServiceProvider provider)
+        public EZActionsController(IServiceProvider provider, Package package)
         {
             this.provider = provider;
-        }
-
-        public List<Type> GetAllTypes()
-        {
-            var trs = GetTypeDiscoveryService();
-            var types = trs.GetTypes(typeof(object), true /*excludeGlobalTypes*/);
-            var result = new List<Type>();
-            foreach (Type type in types)
-            {
-                if (type.IsPublic)
-                {
-                    if (!result.Contains(type))
-                        result.Add(type);
-                }
-            }
-            return result;
-        }
-
-        private ITypeDiscoveryService GetTypeDiscoveryService()
-        {
-            var dte = GetService<EnvDTE.DTE>();
-            var typeService = GetService<DynamicTypeService>();
-            var solution = GetService<IVsSolution>();
-            IVsHierarchy hier;
-            var projects = dte.ActiveSolutionProjects as Array;
-            var currentProject = projects.GetValue(0) as Project;
-            solution.GetProjectOfUniqueName(currentProject.UniqueName, out hier);
-            return typeService.GetTypeDiscoveryService(hier);
-        }
-
-        private T GetService<T>()
-        {
-            return (T)provider.GetService(typeof(T));
+            this.package = package;
         }
 
         public void Generate()
         {
             try
             {
+                OptionPageGrid ezSettings = (OptionPageGrid)this.package.GetDialogPage(typeof(OptionPageGrid));
+
                 if(provider == null)
                 {
-                    ShowMessage("It doesn't seem like you have any MVC Project open. Please open an MVC Project, then try again!", OLEMSGICON.OLEMSGICON_WARNING);
+                    ShowMessage(EZActionsMessages.EZ_MESSAGE_WARNING_PROJECT_NOT_OPEN, OLEMSGICON.OLEMSGICON_WARNING);
                     return;
                 }
 
                 DTE dte = (DTE)provider.GetService(typeof(DTE));
 
-                CodeElements ce = dte.Solution.Projects.Item(1).CodeModel.CodeElements;
-
-
                 if(dte == null || dte.Solution == null || dte.Solution.IsOpen == false)
                 {
-                    ShowMessage("It doesn't seem like you have any MVC Project open. Please open an MVC Project, then try again!", OLEMSGICON.OLEMSGICON_WARNING);
+                    ShowMessage(EZActionsMessages.EZ_MESSAGE_WARNING_PROJECT_NOT_OPEN, OLEMSGICON.OLEMSGICON_WARNING);
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(ezSettings.OptionEZActionsJSFilePath) || Directory.Exists(ezSettings.OptionEZActionsJSFilePath) == false)
+                {
+                    ShowMessage(EZActionsMessages.EZ_MESSAGE_WARNING_JS_FILE_PATH_NOT_SPECIFIED, OLEMSGICON.OLEMSGICON_WARNING);
                     return;
                 }
 
                 string solutionDir = System.IO.Path.GetDirectoryName(dte.Solution.FullName);
                 StringBuilder ezActionsScript = new StringBuilder();
 
-                List<Type> types = GetAllTypes().Where(p => p.BaseType != null && p.BaseType.Name == "Controller").ToList();
+                List<Type> types = EZActionsUtilities.GetAllTypes(provider).Where(p => p.BaseType != null && p.BaseType.Name == "Controller").ToList();
                 List<string> errors = new List<string>();
-                
-                foreach(Type controller in types)
+
+      
+                // TODO: Notify about errors when generating/building the script
+
+                try
                 {
-                    try
-                    {
-                        ezActionsScript.AppendLine(controller.Name);
+                    EZActionsBuilder ezBuilder = new EZActionsBuilder(types);
+                    string script = ezBuilder.Build();
 
-                        foreach (MethodInfo mi in controller.GetMethods(BindingFlags.Instance | BindingFlags.Public).Where(p => p.IsSpecialName == false && !typeof(object).GetMethods().Select(me => me.Name).Contains(p.Name) && p.Name != "Dispose"))
-                        {
-                            ezActionsScript.AppendLine("- " + mi.Name + "(" + (mi.GetParameters() != null ? string.Join(",", mi.GetParameters().Select(p => p.Name)) : "None") + "), Return: " + mi.ReturnType.Name);
-                        }
-                    }
-                    catch(Exception e)
+                    if(string.IsNullOrEmpty(script))
                     {
-                        errors.Add(controller.Name + " failed to generate because of following error: " + e.Message + ", " + e.StackTrace);
+                        ShowMessage("Error happened when building script!");
+                        return;
                     }
+
+                    ezActionsScript.Append(script);
                 }
-
-                if(errors.Count > 0)
+                catch //(Exception e)
                 {
-                    File.WriteAllText(solutionDir + "/Errors.txt", string.Join("\n", errors));
+                    //errors.Add(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + ": " + string.Format(EZActionsMessages.EZ_MESSAGE_ERROR_GENERATE_CONTROLLER, controller.Name, e.Message, e.StackTrace) + "\r\n");
                 }
+            
 
-                File.WriteAllText(solutionDir + "/EZActions.js", ezActionsScript.ToString());
+                File.WriteAllText(ezSettings.OptionEZActionsJSFilePath + "/" + ezSettings.OptionEZActionsJSFileName, ezActionsScript.ToString());
 
-
-                ShowMessage("Generated successfully!");
+                if (errors.Count > 0)
+                {
+                    File.AppendAllText(solutionDir + "/" + EZActionsMessages.EZ_MESSAGE_FILENAME_ERRORS_FILE, string.Join("\n", errors));
+                    ShowMessage(string.Format(EZActionsMessages.EZ_MESSAGE_SUCCESS_GENERATED_ERROR_JS_FILE, ezSettings.OptionEZActionsJSFilePath), OLEMSGICON.OLEMSGICON_WARNING);
+                }
+                else
+                {
+                    ShowMessage(string.Format(EZActionsMessages.EZ_MESSAGE_SUCCESS_GENERATED_JS_FILE, ezSettings.OptionEZActionsJSFilePath));
+                }
             }
             catch(Exception e)
             {
-                ShowMessage("An error occured while generating: " + e.Message + ", " + e.StackTrace, OLEMSGICON.OLEMSGICON_CRITICAL);
+                ShowMessage(string.Format(EZActionsMessages.EZ_MESSAGE_ERROR_OTHERS, e.Message, e.StackTrace), OLEMSGICON.OLEMSGICON_CRITICAL);
             }
         }
 
@@ -123,7 +104,7 @@ namespace EZActions
                 VsShellUtilities.ShowMessageBox(
                     provider,
                     message,
-                    "Message from EZActions:",
+                    EZActionsMessages.EZ_MESSAGE_MISC_MSG_FROM_EZACTIONS,
                     icon,
                     OLEMSGBUTTON.OLEMSGBUTTON_OK,
                     OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
