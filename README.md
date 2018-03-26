@@ -1,6 +1,8 @@
 # EZActions
 EZActions is a fast, simple and lightweight Visual Studio Extension for ASP.NET MVC that can generate a JavaScript file based on jQuery to provide a direct way to access and call your MVC Actions using custom data annotations without the hassle of hardcoding custom Ajax calls.
 
+![alt text](https://raw.githubusercontent.com/kevinjpetersen/EZActions/a4bac2f67a365e001bfb924642919f48a6f2a863/EZActions/Resources/ezactions_explanation.png "EZActions Explanation")
+
 # Introduction
 Are you tired of constantly writing, updating and handling custom Ajax calls from all of your MVC Controller Actions? Look no further! 
 
